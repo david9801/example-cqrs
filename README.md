@@ -11,8 +11,9 @@
 This project is configured with Docker. To configure it, you need to execute the following commands:
 - 'cd docker'
 - 'docker-compose build --no-cache'
+- 'docker compose up'
+- 'docker exec -it api_php bash'
 - 'composer install'
-
 
 ## License
 
