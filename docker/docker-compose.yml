@@ -1,0 +1,96 @@
+version: '3'
+services:
+    api_httpd:
+        image: nginx:latest
+        container_name: ${HTTPD_CONTAINER}
+        restart: ${HTTPD_RESTART}
+        env_file:
+            - ".env"
+        ports:
+            - ${HTTPD_PORT}:83
+        environment:
+            - PROJECT_NAME=${PROJECT_NAME}
+            - HTTPD_HOST=${HTTPD_HOST}
+            - XDEBUG_MODE=${PHP_XDEBUG_MODE}
+        networks:
+            - ${NETWORK}
+        volumes:
+            - ${HTTPD_CONFIG_DIRECTORY}/default.conf:/etc/nginx/conf.d/default.conf
+            - ${HTTPD_CONFIG_DIRECTORY}/default.template.conf:/etc/nginx/conf.d/default.template
+            - ${HTTPD_CONFIG_DIRECTORY}/client_max_body_size.conf:/etc/nginx/conf.d/client_max_body_size.conf:ro
+            - ${CODE_DIRECTORY}:/var/www/${PROJECT_NAME}
+            - ${HTTPD_LOG_DIRECTORY}:/var/log/nginx
+        depends_on:
+            - api_php
+            - api_db_container
+
+    api_php:
+        container_name: ${PHP_CONTAINER}
+        restart: ${PHP_RESTART}
+        env_file:
+            - ".env"
+        build:
+            dockerfile: ${PHP_DIRECTORY}/Dockerfile
+            context: .
+            args:
+                USER_ID: ${USER_ID}
+                GROUP_ID: ${GROUP_ID}
+        environment:
+            - XDEBUG_CONFIG:client_host=172.17.0.1 client_port=9003
+            - PHP_OPENSSL:yes
+        networks:
+            - ${NETWORK}
+        volumes:
+            - ${PHP_CONFIG_DIRECTORY}/php.ini:/usr/local/etc/php/conf.d/php.ini
+            - ${CODE_DIRECTORY}:/var/www/${PROJECT_NAME}
+
+    api_composer:
+        image: "composer"
+        container_name: ${COMPOSER_CONTAINER}
+        volumes:
+            - ${CODE_DIRECTORY}:/app
+        command: install
+
+    api_db_container:
+        image: mysql:${MYSQL_VERSION}
+        container_name: ${MYSQL_CONTAINER}
+        restart: ${MYSQL_RESTART}
+        env_file:
+            - ".env"
+        build:
+            dockerfile: ${MYSQL_DOCKERFILE_DIRECTORY}/Dockerfile
+            context: .
+        security_opt:
+            - seccomp:unconfined
+        ports:
+            - ${MYSQL_PORT}:3306
+        environment:
+            - MYSQL_DATABASE=${MYSQL_DATABASE}
+            - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+            - MYSQL_USER=${MYSQL_USER}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+            - MYSQL_LOG_CONSOLE=${MYSQL_LOG_ENABLED}
+        networks:
+            - ${NETWORK}
+        volumes:
+            - ${MYSQL_INIT_DB_DIRECTORY}:/docker-entrypoint-initdb.d
+            - ${MYSQL_CONFIG_DB_DIRECTORY}/my.cnf:/etc/mysql/conf.d/my.cnf
+
+    api_redis:
+        image: redis
+        restart: always
+        container_name: ${REDIS_CONTAINER}
+        env_file:
+            - ".env"
+        ports:
+            - ${REDIS_PORT}:6379
+        networks:
+            - ${NETWORK}
+        volumes:
+            - redis_data:${REDIS_DIRECTORY}/data
+
+volumes:
+    redis_data:
+
+networks:
+    parking_network:
