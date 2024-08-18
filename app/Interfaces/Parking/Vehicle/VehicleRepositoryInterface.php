@@ -2,8 +2,9 @@
 
 namespace App\Interfaces\Parking\Vehicle;
 
-interface
-VehicleRepositoryInterface
-{
+use App\DTO\Parking\VehicleTypeDTO;
 
+interface VehicleRepositoryInterface
+{
+    public function getTypes($langId): VehicleTypeDTO;
 }
